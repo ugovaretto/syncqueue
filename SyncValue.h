@@ -49,13 +49,23 @@ public:
         empty_ = true;
         return e;
     }
+    void Finish() {
+        done_ = true;
+        Put(T());
+    }
     //! Empty ?
     bool Empty() const {
         return empty_;
     }
+    bool Done() const {
+        return done_;
+    }
+    void Reset() { done_ = false; }
+    bool operator!() const { return Done(); }
 private:
     T value_;
     bool empty_ = true;
     mutable std::mutex mutex_;
     std::condition_variable cond_;
+    bool done_ = false;
 };

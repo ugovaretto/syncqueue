@@ -32,7 +32,7 @@ template<typename T>
 class SyncQueue {
 public:
     //! Push data to back of the queue.
-    void Push(const T &e) {
+    void Push(const T& e) {
         std::lock_guard<std::mutex> guard(mutex_);
         queue_.push_back(e);
         cond_.notify_one(); //notify
@@ -40,7 +40,7 @@ public:
     //! Push data to front of queue.
     //! Used to add a high piority message, normally to signal
     //! end of operations
-    void PushFront(const T &e) {
+    void PushFront(const T& e) {
         std::lock_guard<std::mutex> guard(mutex_);
         queue_.push_front(e);
         cond_.notify_one(); //notify
