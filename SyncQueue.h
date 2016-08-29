@@ -72,6 +72,11 @@ public:
         const bool e = queue_.empty();
         return e;
     }
+    size_t Size() const {
+        std::lock_guard< std::mutex > lg(mutex_);
+        const size_t e = queue_.size();
+        return e;
+    }
 private:
     std::deque<T> queue_;
     mutable std::mutex mutex_;
