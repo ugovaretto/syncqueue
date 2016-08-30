@@ -59,7 +59,8 @@ public:
         std::unique_lock<std::mutex> lock(mutex_);
         //stop and wait for notification if condition is false;
         //continue otherwise
-        cond_.wait(lock, [this] { return !queue_.empty(); });
+        cond_.wait(lock, [this] { return !queue_.empty() || done_; });
+        if(done_) return T();
         T e(std::move(queue_.front()));
         queue_.pop_front();
         return e;
@@ -72,8 +73,28 @@ public:
         const bool e = queue_.empty();
         return e;
     }
+    //! Notify end of operations: will set end of operations flag to true
+    //! and notify condition variable
+    void Stop() {
+        done_ = true;
+        cond_.notify_one(); //notify
+    }
+    //! Reset: set end of operations flag to true: allow reuse of current
+    //! queue instance
+    void Reset() {
+        done_ = false;
+    }
+    //! End of operations requested ?
+    bool Done() const {
+        return done_;
+    }
+    //! Invoke Done()
+    bool operator!() const {
+        return Done();
+    }
 private:
     std::deque<T> queue_;
     mutable std::mutex mutex_;
     std::condition_variable cond_;
+    bool done_ = false;
 };
