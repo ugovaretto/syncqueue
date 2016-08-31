@@ -1,26 +1,10 @@
-// Zero Remoting Framework
-// Author: Ugo Varetto
+#pragma once
+//Author: Ugo Varetto
 
 //! \file SyncQueue.h
 //! \brief Synchronized queue
 //!
 //! Implementation of a synchronized queue.
-#pragma once
-//Author: Ugo Varetto
-//
-// This file is part of zrf - zeromq remoting framework.
-//zrf is free software: you can redistribute it and/or modify
-//it under the terms of the GNU General Public License as published by
-//the Free Software Foundation, either version 3 of the License, or
-//(at your option) any later version.
-//
-//zrf is distributed in the hope that it will be useful,
-//but WITHOUT ANY WARRANTY; without even the implied warranty of
-//MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//GNU General Public License for more details.
-//
-//You should have received a copy of the GNU General Public License
-//along with zrf.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <deque>
 #include <mutex>
@@ -31,9 +15,17 @@
 template<typename T>
 class SyncQueue {
 public:
+    //! Push data to back of the queue; if a temporary (rvalue ref)
+    //! is passed then the data is moved into the internal `std::deque`
+    //! instance.
+    void Push(T&& e) {
+        std::lock_guard<std::mutex> guard(mutex_);
+        queue_.push_back(std::forward< T >(e));
+        cond_.notify_one(); //notify
+    }
     //! Push data to back of the queue.
     void Push(const T& e) {
-        std::lock_guard<std::mutex> guard(mutex_);
+        std::lock_guard< std::mutex > guard(mutex_);
         queue_.push_back(e);
         cond_.notify_one(); //notify
     }
@@ -41,22 +33,30 @@ public:
     //! Used to add a high piority message, normally to signal
     //! end of operations
     void PushFront(const T& e) {
-        std::lock_guard<std::mutex> guard(mutex_);
+        std::lock_guard< std::mutex > guard(mutex_);
         queue_.push_front(e);
         cond_.notify_one(); //notify
     }
-    //! Add elemented in [begin, end) interval to queue
+    //! Push data to front of queue; supports move from temporary
+    //! Used to add a high piority message, normally to signal
+    //! end of operations
+    void PushFront(T&& e) {
+        std::lock_guard< std::mutex > guard(mutex_);
+        queue_.push_front(std::forward< T >(e));
+        cond_.notify_one(); //notify
+    }
+    //! Add elementes in [begin, end) interval to queue
     //! in a single atomic operation.
     template<typename FwdT>
     void Buffer(FwdT begin, FwdT end) {
-        std::lock_guard<std::mutex> guard(mutex_);
+        std::lock_guard< std::mutex > guard(mutex_);
         while(begin++ != end) queue_.push_back(*begin);
         cond_.notify_one();
     }
     //! Return and remove element in front of queue.
     //! Waits indefinitely for an element to be available.
     T Pop() {
-        std::unique_lock<std::mutex> lock(mutex_);
+        std::unique_lock< std::mutex > lock(mutex_);
         //stop and wait for notification if condition is false;
         //continue otherwise
         cond_.wait(lock, [this] { return !queue_.empty() || done_; });
